@@ -3,8 +3,8 @@ import 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js'
 const template = document.createElement('template')
 const elements = `
   <div id="labeled-input-wrapper">
-    <input id="labeled-input" name="email" type="text" placeholder=" " autocapitalize="none" />
-    <label id="labeled-input-label" for="email"></label>
+    <input id="labeled-input" name="input" placeholder=" " autocapitalize="none" />
+    <label id="labeled-input-label" for="input"></label>
   </div>
 `
 const styles = `
@@ -59,6 +59,7 @@ const styles = `
       transition: all 0.3s;
       color: var(--label-color);
       font-size: var(--label-font-size);
+      pointer-events: none;
     }
     #labeled-input:focus + #labeled-input-label,
     #labeled-input:not(:placeholder-shown) + #labeled-input-label {
@@ -72,34 +73,15 @@ template.innerHTML = `
 `
 
 export class LabeledInput extends HTMLElement {
-  static get observedAttributes() {
-    return [
-      // Fonts
-      'font-google',
-      'font-fallback',
-      'font-weight',
-      'font-size',
-      'label-font-size',
-
-      // Texts
-      'label',
-
-      // Colors
-      'background-color',
-      'input-color',
-      'underline-color',
-      'label-color',
-    ]
-  }
   constructor() {
     super()
     this.attach()
+    this.getElements()
+    this.initializeParams()
   }
   connectedCallback() {
     this.loadFont()
-    this.getElements()
     this.setEventListeners()
-    this.initializeParams()
     this.render()
   }
   attributeChangedCallback(name, oldVal, newVal) {
@@ -114,6 +96,12 @@ export class LabeledInput extends HTMLElement {
     this.root = this.attachShadow({mode: 'closed'})
     this.root.appendChild(template.content.cloneNode(true))
   }
+  getElements() {
+    this.rootElem = this.root.host
+    this.wrapperElem = this.root.querySelector('#labeled-input-wrapper')
+    this.inputElem = this.root.querySelector('#labeled-input')
+    this.labelElem = this.root.querySelector('#labeled-input-label')
+  }
   loadFont() {
     if (!this.fontGoogle) {
       return
@@ -126,15 +114,11 @@ export class LabeledInput extends HTMLElement {
       }
     })
   }
-  getElements() {
-    this.rootElem = this.root.host
-    this.wrapperElem = this.root.querySelector('#labeled-input-wrapper')
-    this.inputElem = this.root.querySelector('#labeled-input')
-    this.labelElem = this.root.querySelector('#labeled-input-label')
-  }
   setEventListeners() {
     // input change events
     this.inputElem.oninput = e => {
+      this.value = e.target.value
+
       // Add has-value class when having a value
       const hasValue = this.inputElem.value !== ''
       if (hasValue) {
@@ -144,7 +128,7 @@ export class LabeledInput extends HTMLElement {
       }
 
       // Dispatch event on input
-      this.inputElem.dispatchEvent(new CustomEvent('submit', {
+      this.inputElem.dispatchEvent(new CustomEvent('oninput', {
         detail: {
           value: e.target.value,
         },
@@ -160,7 +144,32 @@ export class LabeledInput extends HTMLElement {
       this.wrapperElem.classList.remove('focus')
     }
   }
+
+  static get observedAttributes() {
+    return [
+      // Fonts
+      'font-google',
+      'font-fallback',
+      'font-weight',
+      'font-size',
+      'label-font-size',
+
+      // Texts
+      'label',
+
+      // Type
+      'type',
+
+      // Colors
+      'background-color',
+      'input-color',
+      'underline-color',
+      'label-color',
+    ]
+  }
   initializeParams() {
+    this.value = ''
+
     // Fonts
     if (!this.fontFallback) {
       this.fontFallback = 'sans-serif'
@@ -180,9 +189,14 @@ export class LabeledInput extends HTMLElement {
       this.label = 'Label'
     }
 
+    // Type
+    if (!this.type) {
+      this.type = 'text'
+    }
+
     // Colors
     if (!this.backgroundColor) {
-      this.backgroundColor = '#FFFFFF'
+      this.backgroundColor = 'transparent'
     }
     if (!this.labelColor) {
       this.labelColor = 'rgba(0, 0, 0, 0.5)'
@@ -218,6 +232,11 @@ export class LabeledInput extends HTMLElement {
         this.label = newVal
         break
 
+      // Type
+      case 'type':
+        this.type = newVal
+        break
+
       // Colors
       case 'background-color':
         this.backgroundColor = newVal
@@ -247,6 +266,9 @@ export class LabeledInput extends HTMLElement {
 
     // Texts
     this.labelElem.textContent = this.label
+
+    // Type
+    this.inputElem.setAttribute('type', this.type)
 
     // Colors
     this.rootElem.style.setProperty('--background-color', this.backgroundColor)
